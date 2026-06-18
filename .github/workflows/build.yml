@@ -19,11 +19,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { goos: linux,  goarch: amd64, arch: amd64 }
-          - { goos: linux,  goarch: arm64, arch: arm64 }            # 64-bit Raspberry Pi OS, ARM servers
-          - { goos: linux,  goarch: arm,   goarm: "7", arch: armv7 } # 32-bit Raspberry Pi OS
-          - { goos: darwin, goarch: amd64, arch: amd64 }            # Intel Macs
-          - { goos: darwin, goarch: arm64, arch: arm64 }            # Apple Silicon
+          - { goos: linux,   goarch: amd64, arch: amd64 }
+          - { goos: linux,   goarch: arm64, arch: arm64 }             # 64-bit Raspberry Pi OS, ARM servers
+          - { goos: linux,   goarch: arm,   goarm: "7", arch: armv7 } # 32-bit Raspberry Pi OS
+          - { goos: darwin,  goarch: amd64, arch: amd64 }             # Intel Macs
+          - { goos: darwin,  goarch: arm64, arch: arm64 }             # Apple Silicon
+          - { goos: windows, goarch: amd64, arch: amd64, ext: .exe }
     steps:
       - uses: actions/checkout@v4
 
@@ -40,16 +41,22 @@ jobs:
           CGO_ENABLED: 0
         run: |
           mkdir -p pkg
-          go build -trimpath -ldflags "-s -w" -o pkg/quota-rules-status          ./cmd/quota-rules-status
-          go build -trimpath -ldflags "-s -w" -o pkg/quota-rules-status-exporter ./cmd/quota-rules-status-exporter
-          go build -trimpath -ldflags "-s -w" -o pkg/quota-rules-status-webui    ./webui
+          ext="${{ matrix.ext }}"
+          go build -trimpath -ldflags "-s -w" -o "pkg/quota-rules-status${ext}"          ./cmd/quota-rules-status
+          go build -trimpath -ldflags "-s -w" -o "pkg/quota-rules-status-exporter${ext}" ./cmd/quota-rules-status-exporter
+          go build -trimpath -ldflags "-s -w" -o "pkg/quota-rules-status-webui${ext}"    ./webui
 
       - name: Package
         id: package
         run: |
           name="coralogix-quota-rules-status-${{ matrix.goos }}-${{ matrix.arch }}"
-          tar -czf "${name}.tar.gz" -C pkg .
-          echo "archive=${name}.tar.gz" >> "$GITHUB_OUTPUT"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            (cd pkg && zip -r "../${name}.zip" .)
+            echo "archive=${name}.zip" >> "$GITHUB_OUTPUT"
+          else
+            tar -czf "${name}.tar.gz" -C pkg .
+            echo "archive=${name}.tar.gz" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: actions/upload-artifact@v4
         with:

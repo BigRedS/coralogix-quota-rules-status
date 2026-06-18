@@ -20,11 +20,15 @@ directly — including non-pillar entity types like `olly`.
 
 ## Install
 
-Prebuilt binaries for macOS and Linux (amd64, arm64, and armv7 for 32-bit
-Raspberry Pi OS) are attached to each [GitHub release](../../releases); every
-push also builds them as workflow artifacts. Each archive contains all three
-binaries: `quota-rules-status` (CLI), `quota-rules-status-exporter`, and
-`quota-rules-status-webui`.
+Prebuilt binaries for macOS, Linux (amd64, arm64, and armv7 for 32-bit
+Raspberry Pi OS), and Windows (amd64) are attached to each
+[GitHub release](../../releases); every push also builds them as workflow
+artifacts. Each archive contains all three binaries: `quota-rules-status`
+(CLI), `quota-rules-status-exporter`, and `quota-rules-status-webui`.
+
+Docker images for the web UI and the exporter are published to GHCR
+(`ghcr.io/<owner>/coralogix-quota-rules-status-webui` and
+`-exporter`, multi-arch amd64/arm64).
 
 ## Build
 
