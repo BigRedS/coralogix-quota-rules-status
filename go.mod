@@ -1,4 +1,4 @@
-module blocked-status
+module coralogix-quota-rules-status
 
 go 1.25.5
 

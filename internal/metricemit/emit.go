@@ -1,4 +1,4 @@
-// Package metricemit pushes the blocked-status figures to Coralogix as OTLP
+// Package metricemit pushes the quota-rules-status figures to Coralogix as OTLP
 // metrics. It is the only package that depends on the OpenTelemetry SDK, so the
 // CLI and web UI stay dependency-light.
 //
@@ -24,7 +24,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"google.golang.org/grpc/credentials"
 
-	"blocked-status/internal/blockedstatus"
+	"coralogix-quota-rules-status/internal/quotarules"
 )
 
 // Config is everything needed to push metrics to a Coralogix team.
@@ -40,7 +40,7 @@ type Config struct {
 // It always flushes before returning, which is what makes it safe to call from
 // AWS Lambda (the execution environment freezes the moment the handler returns,
 // so background batch export would never run).
-func Emit(ctx context.Context, cfg Config, rows []blockedstatus.MetricSeries) error {
+func Emit(ctx context.Context, cfg Config, rows []quotarules.MetricSeries) error {
 	exp, err := otlpmetricgrpc.New(ctx,
 		otlpmetricgrpc.WithEndpoint(cfg.Endpoint),
 		otlpmetricgrpc.WithHeaders(map[string]string{"Authorization": "Bearer " + cfg.IngestKey}),
@@ -67,7 +67,7 @@ func Emit(ctx context.Context, cfg Config, rows []blockedstatus.MetricSeries) er
 	// Shut the provider down no matter what, so the gRPC connection is closed.
 	defer func() { _ = provider.Shutdown(ctx) }()
 
-	meter := provider.Meter("blocked-status")
+	meter := provider.Meter("quota-rules-status")
 
 	usage, err := meter.Float64Gauge("quota_rules_usage_u")
 	if err != nil {

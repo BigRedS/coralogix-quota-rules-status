@@ -1,4 +1,4 @@
-// Command blocked-status-exporter computes the blocked-status report and pushes
+// Command quota-rules-status-exporter computes the quota-rules-status report and pushes
 // it to Coralogix as OTLP metrics. It is built to run in two ways from the same
 // binary:
 //
@@ -22,8 +22,8 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 
-	"blocked-status/internal/blockedstatus"
-	"blocked-status/internal/metricemit"
+	"coralogix-quota-rules-status/internal/metricemit"
+	"coralogix-quota-rules-status/internal/quotarules"
 )
 
 // config holds everything the exporter needs, gathered from flags/env.
@@ -64,9 +64,9 @@ func configFromFlags() config {
 	flag.StringVar(&cfg.readRegion, "region", os.Getenv("CX_REGION"), "region to read usage from: eu1, eu2, us1, us2, us3, ap1, ap2, ap3")
 	flag.StringVar(&cfg.apiKey, "api-key", os.Getenv("CX_API_KEY"), "management API key for reading (or CX_API_KEY)")
 	flag.StringVar(&cfg.emitRegion, "emit-region", os.Getenv("CX_EMIT_REGION"), "region to send metrics to (defaults to -region)")
-	flag.StringVar(&cfg.ingestKey, "ingest-key", os.Getenv("CX_INGEST_KEY"), "Send-Your-Data key for emitting metrics (or CX_INGEST_KEY)")
+	flag.StringVar(&cfg.ingestKey, "ingest-key", os.Getenv("CX_SEND_YOUR_DATA_KEY"), "Send-Your-Data key for emitting metrics (or CX_SEND_YOUR_DATA_KEY)")
 	flag.StringVar(&cfg.team, "team", os.Getenv("CX_TEAM"), "value for the `team` metric label")
-	flag.StringVar(&cfg.appName, "cx-application", envOr("CX_APPLICATION_NAME", "blocked-status"), "cx.application.name for the emitted metrics")
+	flag.StringVar(&cfg.appName, "cx-application", envOr("CX_APPLICATION_NAME", "quota-rules-status"), "cx.application.name for the emitted metrics")
 	flag.StringVar(&cfg.subsystemName, "cx-subsystem", envOr("CX_SUBSYSTEM_NAME", "quota-rules"), "cx.subsystem.name for the emitted metrics")
 	flag.BoolVar(&cfg.dryRun, "dry-run", false, "print the metrics that would be emitted instead of pushing them (no ingest key needed)")
 	flag.Parse()
@@ -92,17 +92,17 @@ func runOnce(ctx context.Context, cfg config) error {
 		return fmt.Errorf("need -region and -api-key (plus -ingest-key and -team unless -dry-run); flags or CX_* env vars")
 	}
 
-	host, err := blockedstatus.HostForRegion(cfg.readRegion)
+	host, err := quotarules.HostForRegion(cfg.readRegion)
 	if err != nil {
 		return err
 	}
-	endpoint, err := blockedstatus.IngressEndpoint(cfg.emitRegion)
+	endpoint, err := quotarules.IngressEndpoint(cfg.emitRegion)
 	if err != nil {
 		return err
 	}
 
-	client := blockedstatus.NewClient(host, cfg.apiKey)
-	report, err := blockedstatus.FetchReport(client)
+	client := quotarules.NewClient(host, cfg.apiKey)
+	report, err := quotarules.FetchReport(client)
 	if err != nil {
 		return fmt.Errorf("fetching report: %w", err)
 	}
@@ -130,7 +130,7 @@ func runOnce(ctx context.Context, cfg config) error {
 }
 
 // printSeries shows what a real run would push, without sending anything.
-func printSeries(cfg config, endpoint string, rows []blockedstatus.MetricSeries) {
+func printSeries(cfg config, endpoint string, rows []quotarules.MetricSeries) {
 	fmt.Printf("dry run — would push to %s as team=%q (app=%q subsystem=%q)\n\n",
 		endpoint, cfg.team, cfg.appName, cfg.subsystemName)
 	fmt.Printf("%-16s %12s %12s %12s %12s\n", "rule", "usage_u", "limit_u", "available_u", "available_pc")

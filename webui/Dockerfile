@@ -4,7 +4,7 @@
 #
 # Build context is the repo root (the webui imports internal/... packages).
 # From the repo root:
-#   docker build -f webui/Dockerfile -t blocked-status-webui .
+#   docker build -f webui/Dockerfile -t quota-rules-status-webui .
 #
 # The server never writes to disk, so it runs cleanly with --read-only:
 #   docker run --rm \
@@ -12,7 +12,7 @@
 #       --cap-drop=ALL \
 #       --security-opt=no-new-privileges \
 #       -p 8765:8765 \
-#       blocked-status-webui
+#       quota-rules-status-webui
 
 FROM golang:1.25-alpine AS build
 WORKDIR /src

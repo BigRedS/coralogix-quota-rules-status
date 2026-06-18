@@ -1,4 +1,4 @@
-// Command blocked-status reports how close a Coralogix team is to its capacity
+// Command quota-rules-status reports how close a Coralogix team is to its capacity
 // blocks. It talks straight to the Coralogix HTTP API (no cx CLI), so it only
 // needs a region name and an API key.
 //
@@ -11,7 +11,7 @@
 // leftover ("unassigned") quota that has been used.
 //
 // Written plainly on purpose: standard library only, small functions, one
-// obvious step after another. The real work lives in internal/blockedstatus so
+// obvious step after another. The real work lives in internal/quotarules so
 // the web UI can reuse it.
 package main
 
@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"blocked-status/internal/blockedstatus"
+	"coralogix-quota-rules-status/internal/quotarules"
 )
 
 func main() {
@@ -29,19 +29,19 @@ func main() {
 	flag.Parse()
 
 	if *region == "" || *apiKey == "" {
-		fmt.Fprintln(os.Stderr, "usage: blocked-status -region <name> -api-key <key>")
+		fmt.Fprintln(os.Stderr, "usage: quota-rules-status -region <name> -api-key <key>")
 		fmt.Fprintln(os.Stderr, "       (api key may also come from the CX_API_KEY environment variable)")
 		os.Exit(2)
 	}
 
-	host, err := blockedstatus.HostForRegion(*region)
+	host, err := quotarules.HostForRegion(*region)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 
-	client := blockedstatus.NewClient(host, *apiKey)
-	report, err := blockedstatus.FetchReport(client)
+	client := quotarules.NewClient(host, *apiKey)
+	report, err := quotarules.FetchReport(client)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
@@ -51,8 +51,8 @@ func main() {
 }
 
 // printReport writes the report in a plain, readable layout.
-func printReport(r blockedstatus.Report) {
-	fmt.Println("Blocked-status report (today)")
+func printReport(r quotarules.Report) {
+	fmt.Println("Quota-rules status report (today)")
 	fmt.Println("=================================================")
 
 	fmt.Printf("\nTotal quota: %.2f units used of %.2f (%.1f%%)\n",

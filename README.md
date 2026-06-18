@@ -1,4 +1,4 @@
-# blocked-status
+# coralogix-quota-rules-status
 
 A small Go tool that reports how close a Coralogix team is to its capacity
 blocks. It talks straight to the Coralogix HTTP API (no `cx` CLI), so it only
@@ -18,22 +18,30 @@ The usage metric is keyed by the same `entity_type` names the quota rules use
 (`logs`, `metrics`, `spans`, `olly`, ...), so each rule is matched to its usage
 directly — including non-pillar entity types like `olly`.
 
+## Install
+
+Prebuilt binaries for macOS and Linux (amd64, arm64, and armv7 for 32-bit
+Raspberry Pi OS) are attached to each [GitHub release](../../releases); every
+push also builds them as workflow artifacts. Each archive contains all three
+binaries: `quota-rules-status` (CLI), `quota-rules-status-exporter`, and
+`quota-rules-status-webui`.
+
 ## Build
 
 ```sh
-go build -o blocked-status ./cmd/blocked-status
+go build -o quota-rules-status ./cmd/quota-rules-status
 ```
 
 ## Run
 
 ```sh
-./blocked-status -region eu2 -api-key <your-api-key>
+./quota-rules-status -region eu2 -api-key <your-api-key>
 ```
 
 Or without building first:
 
 ```sh
-go run ./cmd/blocked-status -region eu2 -api-key <your-api-key>
+go run ./cmd/quota-rules-status -region eu2 -api-key <your-api-key>
 ```
 
 There is also a small web UI — see [webui/](webui/).
@@ -42,7 +50,7 @@ The API key can also come from the `CX_API_KEY` environment variable:
 
 ```sh
 export CX_API_KEY=<your-api-key>
-./blocked-status -region eu2
+./quota-rules-status -region eu2
 ```
 
 
@@ -54,7 +62,7 @@ export CX_API_KEY=<your-api-key>
 ## Example output
 
 ```
-Blocked-status report (today)
+Quota-rules status report (today)
 =================================================
 
 Total quota: 1.17 units used of 15.00 (7.8%)
@@ -85,16 +93,16 @@ Blocked today: 0.00 units
 
 There is also an exporter that pushes these figures to Coralogix as OTLP metrics
 (per-rule, plus `_total` and `_unassigned`), runnable from cron or AWS Lambda —
-see [cmd/blocked-status-exporter/](cmd/blocked-status-exporter/).
+see [cmd/quota-rules-status-exporter/](cmd/quota-rules-status-exporter/).
 
 ## How it fits together
 
 | Path                        | Job                                                       |
 |-----------------------------|-----------------------------------------------------------|
-| `cmd/blocked-status/`       | the CLI: flags, orchestration, printing                   |
-| `cmd/blocked-status-exporter/` | pushes the report to Coralogix as OTLP metrics (cron/Lambda) |
-| `internal/blockedstatus/client.go` | the HTTP calls (PromQL metrics + quota rules) and types |
-| `internal/blockedstatus/calc.go`   | the proportion math + the metric series it emits   |
-| `internal/blockedstatus/regions.go`| region name → API host and ingress endpoint       |
+| `cmd/quota-rules-status/`       | the CLI: flags, orchestration, printing                   |
+| `cmd/quota-rules-status-exporter/` | pushes the report to Coralogix as OTLP metrics (cron/Lambda) |
+| `internal/quotarules/client.go` | the HTTP calls (PromQL metrics + quota rules) and types |
+| `internal/quotarules/calc.go`   | the proportion math + the metric series it emits   |
+| `internal/quotarules/regions.go`| region name → API host and ingress endpoint       |
 | `internal/metricemit/`      | the OTLP push (the only package that imports the OTel SDK) |
-| `webui/`                    | a small web UI that reuses `internal/blockedstatus`       |
+| `webui/`                    | a small web UI that reuses `internal/quotarules`       |

@@ -2,5 +2,16 @@
 .env
 
 # Compiled binaries
-/blocked-status
+/quota-rules-status
 /webui-bin
+
+# Lambda build artifacts
+/bootstrap
+/function.zip
+
+# OpenTofu / Terraform state and vars (may hold secrets)
+deploy/tf/.terraform/
+deploy/tf/.terraform.lock.hcl
+deploy/tf/*.tfstate
+deploy/tf/*.tfstate.*
+*.tfvars

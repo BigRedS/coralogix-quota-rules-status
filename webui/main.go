@@ -1,6 +1,6 @@
-// Command webui is a small localhost server to run blocked-status from a browser.
+// Command webui is a small localhost server to run quota-rules-status from a browser.
 //
-// Unlike a long scan, a blocked-status report is three quick API calls, so this
+// Unlike a long scan, a quota-rules-status report is three quick API calls, so this
 // is fully synchronous: POST /api/run does the work and returns the report as
 // JSON. There are no background jobs, temp files, or downloads — which also
 // means the server never writes to disk, so it runs happily with --read-only.
@@ -16,7 +16,7 @@ import (
 	"net/http"
 	"strings"
 
-	"blocked-status/internal/blockedstatus"
+	"coralogix-quota-rules-status/internal/quotarules"
 )
 
 //go:embed index.html
@@ -31,7 +31,7 @@ func main() {
 	mux.Handle("GET /api/regions", http.HandlerFunc(handleRegions))
 	mux.Handle("POST /api/run", http.HandlerFunc(handleRun))
 
-	log.Printf("blocked-status webui listening on http://%s", *listen)
+	log.Printf("quota-rules-status webui listening on http://%s", *listen)
 	if err := http.ListenAndServe(*listen, mux); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func serveIndex() http.Handler {
 
 func handleRegions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
-		"regions": blockedstatus.SortedRegions(),
+		"regions": quotarules.SortedRegions(),
 	})
 }
 
@@ -73,14 +73,14 @@ func handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	host, err := blockedstatus.HostForRegion(req.Region)
+	host, err := quotarules.HostForRegion(req.Region)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
 
-	client := blockedstatus.NewClient(host, req.APIKey)
-	report, err := blockedstatus.FetchReport(client)
+	client := quotarules.NewClient(host, req.APIKey)
+	report, err := quotarules.FetchReport(client)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 		return

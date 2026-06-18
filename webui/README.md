@@ -1,6 +1,6 @@
-# blocked-status web UI
+# quota-rules-status web UI
 
-A tiny localhost web UI for [blocked-status](../README.md): pick a region, paste
+A tiny localhost web UI for [quota-rules-status](../README.md): pick a region, paste
 an API key, and see how close the team is to its capacity blocks today.
 
 It serves a single embedded HTML page and one JSON endpoint. A check is three
@@ -20,13 +20,13 @@ Then open <http://localhost:8765>.
 
 ## Run with Docker
 
-The build context is the **repo root** (the webui imports `internal/blockedstatus`).
+The build context is the **repo root** (the webui imports `internal/quotarules`).
 
 ```sh
 # from the repo root
-docker build -f webui/Dockerfile -t blocked-status-webui .
+docker build -f webui/Dockerfile -t quota-rules-status-webui .
 docker run --rm --read-only --cap-drop=ALL --security-opt=no-new-privileges \
-    -p 8765:8765 blocked-status-webui
+    -p 8765:8765 quota-rules-status-webui
 ```
 
 Or with compose (from this `webui/` directory):

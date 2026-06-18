@@ -1,4 +1,4 @@
-# Read-only deployment of the blocked-status webui.
+# Read-only deployment of the quota-rules-status webui.
 #
 # Build from local source and run:
 #   docker compose up --build
@@ -6,7 +6,7 @@
 # Then open http://localhost:8765.
 #
 # The build context is the repo root because the webui imports the
-# internal/blockedstatus package from the parent Go module.
+# internal/quotarules package from the parent Go module.
 
 services:
   webui:

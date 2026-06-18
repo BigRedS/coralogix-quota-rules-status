@@ -1,4 +1,4 @@
-package blockedstatus
+package quotarules
 
 import (
 	"math"
