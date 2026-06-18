@@ -31,18 +31,18 @@ Reading usage and pushing metrics use **different credentials** and may target
 | `-region`         | `CX_REGION`           | region to **read** usage from |
 | `-api-key`        | `CX_API_KEY`          | management API key for reading (needs `team-quota-rules:Read` + usage/metrics read) |
 | `-emit-region`    | `CX_EMIT_REGION`      | region to **send** metrics to (defaults to `-region`) |
-| `-ingest-key`     | `CX_SEND_YOUR_DATA_KEY` | Send-Your-Data key for emitting |
+| `-send-your-data-key` | `CX_SEND_YOUR_DATA_KEY` | Send-Your-Data key for emitting |
 | `-team`           | `CX_TEAM`             | value for the `team` label |
-| `-cx-application` | `CX_APPLICATION_NAME` | `cx.application.name` (default `quota-rules-status`) |
-| `-cx-subsystem`   | `CX_SUBSYSTEM_NAME`   | `cx.subsystem.name` (default `quota-rules`) |
-| `-dry-run`        | —                     | print the metrics instead of pushing (no ingest key needed) |
+| `-application`    | `CX_APPLICATION_NAME` | `cx.application.name` (default `quota-rules-status`) |
+| `-subsystem`      | `CX_SUBSYSTEM_NAME`   | `cx.subsystem.name` (default `quota-rules`) |
+| `-dry-run`        | —                     | print the metrics instead of pushing (no key needed) |
 
 ## Run one-shot (cron)
 
 ```sh
 go run ./cmd/quota-rules-status-exporter \
     -region eu2 -api-key "$MGMT_KEY" \
-    -ingest-key "$INGEST_KEY" -team otel-demo
+    -send-your-data-key "$SEND_YOUR_DATA_KEY" -team otel-demo
 
 # see what would be sent, without sending:
 go run ./cmd/quota-rules-status-exporter -region eu2 -api-key "$MGMT_KEY" -dry-run

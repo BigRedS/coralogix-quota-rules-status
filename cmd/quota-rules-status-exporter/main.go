@@ -64,11 +64,11 @@ func configFromFlags() config {
 	flag.StringVar(&cfg.readRegion, "region", os.Getenv("CX_REGION"), "region to read usage from: eu1, eu2, us1, us2, us3, ap1, ap2, ap3")
 	flag.StringVar(&cfg.apiKey, "api-key", os.Getenv("CX_API_KEY"), "management API key for reading (or CX_API_KEY)")
 	flag.StringVar(&cfg.emitRegion, "emit-region", os.Getenv("CX_EMIT_REGION"), "region to send metrics to (defaults to -region)")
-	flag.StringVar(&cfg.ingestKey, "ingest-key", os.Getenv("CX_SEND_YOUR_DATA_KEY"), "Send-Your-Data key for emitting metrics (or CX_SEND_YOUR_DATA_KEY)")
+	flag.StringVar(&cfg.ingestKey, "send-your-data-key", os.Getenv("CX_SEND_YOUR_DATA_KEY"), "Send-Your-Data key for emitting metrics (or CX_SEND_YOUR_DATA_KEY)")
 	flag.StringVar(&cfg.team, "team", os.Getenv("CX_TEAM"), "value for the `team` metric label")
-	flag.StringVar(&cfg.appName, "cx-application", envOr("CX_APPLICATION_NAME", "quota-rules-status"), "cx.application.name for the emitted metrics")
-	flag.StringVar(&cfg.subsystemName, "cx-subsystem", envOr("CX_SUBSYSTEM_NAME", "quota-rules"), "cx.subsystem.name for the emitted metrics")
-	flag.BoolVar(&cfg.dryRun, "dry-run", false, "print the metrics that would be emitted instead of pushing them (no ingest key needed)")
+	flag.StringVar(&cfg.appName, "application", envOr("CX_APPLICATION_NAME", "quota-rules-status"), "cx.application.name for the emitted metrics (or CX_APPLICATION_NAME)")
+	flag.StringVar(&cfg.subsystemName, "subsystem", envOr("CX_SUBSYSTEM_NAME", "quota-rules"), "cx.subsystem.name for the emitted metrics (or CX_SUBSYSTEM_NAME)")
+	flag.BoolVar(&cfg.dryRun, "dry-run", false, "print the metrics that would be emitted instead of pushing them (no key needed)")
 	flag.Parse()
 
 	if cfg.emitRegion == "" {
@@ -89,7 +89,7 @@ func runOnce(ctx context.Context, cfg config) error {
 	// A dry run needs neither an ingest key nor a team label.
 	needEmit := !cfg.dryRun
 	if cfg.readRegion == "" || cfg.apiKey == "" || (needEmit && (cfg.ingestKey == "" || cfg.team == "")) {
-		return fmt.Errorf("need -region and -api-key (plus -ingest-key and -team unless -dry-run); flags or CX_* env vars")
+		return fmt.Errorf("need -region and -api-key (plus -send-your-data-key and -team unless -dry-run); flags or CX_* env vars")
 	}
 
 	host, err := quotarules.HostForRegion(cfg.readRegion)
