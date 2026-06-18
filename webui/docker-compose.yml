@@ -1,0 +1,23 @@
+# Read-only deployment of the blocked-status webui.
+#
+# Build from local source and run:
+#   docker compose up --build
+#
+# Then open http://localhost:8765.
+#
+# The build context is the repo root because the webui imports the
+# internal/blockedstatus package from the parent Go module.
+
+services:
+  webui:
+    build:
+      context: ..
+      dockerfile: webui/Dockerfile
+    ports:
+      - "127.0.0.1:8765:8765"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

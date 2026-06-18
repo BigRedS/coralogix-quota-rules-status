@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>blocked-status</title>
+  <style>
+    :root {
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      background: #0f1419;
+      color: #e7ecf1;
+    }
+    body { max-width: 52rem; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.25rem; }
+    p.note { color: #9aa7b2; font-size: 0.875rem; line-height: 1.5; }
+    label { display: block; margin-top: 1rem; font-size: 0.8rem; color: #9aa7b2; }
+    select, input[type="password"], input[type="text"] {
+      width: 100%; margin-top: 0.35rem; padding: 0.5rem 0.6rem;
+      border-radius: 6px; border: 1px solid #2a3440; background: #1a222d; color: #e7ecf1;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 1.25rem; padding: 0.55rem 1rem; border-radius: 6px;
+      border: none; background: #3d8bfd; color: #fff; font-weight: 600; cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #status { margin-top: 1rem; font-size: 0.9rem; white-space: pre-wrap; }
+    .err { color: #ff8a8a; }
+    .ok { color: #8bd58b; }
+    input#key.invalid { border-color: #a65d5d; }
+    footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid #2a3440; font-size: 0.8rem; color: #9aa7b2; }
+    #key-preview {
+      margin-top: 0.4rem;
+      font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace;
+      font-size: 0.78rem; line-height: 1.4; color: #9aa7b2;
+      word-break: break-all; min-height: 1.35rem;
+    }
+    #key-preview.warn { color: #e8b464; }
+    #key-preview.ok { color: #8bd58b; }
+
+    /* report */
+    #report { margin-top: 1.5rem; }
+    #report h2 { font-size: 1rem; font-weight: 600; margin: 1.25rem 0 0.5rem; }
+    .row { margin: 0.55rem 0; }
+    .row .head { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem; }
+    .row .name { color: #e7ecf1; font-family: ui-monospace, Menlo, monospace; }
+    .row .figures { color: #9aa7b2; }
+    .bar { height: 0.5rem; border-radius: 4px; background: #1a222d; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: #3d8bfd; }
+    .bar > span.warn { background: #e8b464; }
+    .bar > span.hot { background: #ff8a8a; }
+    .blocked { margin-top: 1.25rem; font-size: 0.9rem; }
+    .blocked.hit { color: #ff8a8a; }
+  </style>
+</head>
+<body>
+  <h1>blocked-status</h1>
+  <p class="note">How close is this team to its capacity blocks today? Runs the same checks as the CLI. Use only on a machine you trust; your API key is sent to this local server. The key needs the <code>team-quota-rules:Read</code> permission plus data-usage/metrics read access.</p>
+
+  <label for="region">Environment (region)</label>
+  <select id="region"></select>
+
+  <label for="key">API key</label>
+  <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="cxup_… (35 characters)" />
+  <div id="key-preview" aria-live="polite"></div>
+
+  <button id="go" type="button">Check status</button>
+
+  <div id="status"></div>
+  <div id="report"></div>
+
+  <footer>A small wrapper around the Coralogix HTTP API.</footer>
+
+  <script>
+    /** Personal API keys: prefix cxup_ and fixed length (see Coralogix UI copy format). */
+    const KEY_PREFIX = "cxup_";
+    const KEY_LEN = "cxup_06HddjzGTkHRCe1wLjFulhBbeJVdhB".length;
+
+    const regionSel = document.getElementById("region");
+    const keyInput = document.getElementById("key");
+    const keyPreview = document.getElementById("key-preview");
+    const goBtn = document.getElementById("go");
+    const statusEl = document.getElementById("status");
+    const reportEl = document.getElementById("report");
+
+    async function loadRegions() {
+      const r = await fetch("/api/regions");
+      const data = await r.json();
+      regionSel.innerHTML = "";
+      for (const row of data.regions) {
+        const opt = document.createElement("option");
+        opt.value = row.code;
+        opt.textContent = row.code.toUpperCase() + " — " + row.host;
+        regionSel.appendChild(opt);
+      }
+    }
+
+    function setStatus(text, cls) {
+      statusEl.className = cls || "";
+      statusEl.textContent = text;
+    }
+
+    function updateKeyPreview() {
+      const raw = keyInput.value;
+      keyInput.classList.remove("invalid");
+      if (!raw) { keyPreview.textContent = ""; keyPreview.className = ""; return; }
+      if (!raw.startsWith(KEY_PREFIX)) {
+        keyPreview.textContent = "Visible check: key must start with " + KEY_PREFIX + ".";
+        keyPreview.className = "warn";
+        keyInput.classList.add("invalid");
+        return;
+      }
+      const rest = raw.slice(KEY_PREFIX.length);
+      const visible = rest.length <= 4
+        ? KEY_PREFIX + rest
+        : KEY_PREFIX + "•".repeat(rest.length - 4) + rest.slice(-4);
+      keyPreview.textContent = "Visible check: " + visible + " — length " + raw.length + "/" + KEY_LEN;
+      if (raw.length !== KEY_LEN) {
+        keyPreview.className = "warn";
+        keyInput.classList.add("invalid");
+      } else {
+        keyPreview.className = "ok";
+      }
+    }
+
+    function keyLooksValid(raw) {
+      const s = raw.trim();
+      return s.startsWith(KEY_PREFIX) && s.length === KEY_LEN;
+    }
+
+    keyInput.addEventListener("input", updateKeyPreview);
+    keyInput.addEventListener("paste", () => requestAnimationFrame(updateKeyPreview));
+
+    function pct(frac) { return (100 * (frac || 0)).toFixed(1) + "%"; }
+
+    function barClass(frac) {
+      if (frac >= 1) return "hot";
+      if (frac >= 0.8) return "warn";
+      return "";
+    }
+
+    function rowHTML(name, used, reserved, frac) {
+      const width = Math.min(100, 100 * (frac || 0));
+      return '<div class="row">'
+        + '<div class="head"><span class="name">' + name + '</span>'
+        + '<span class="figures">' + used.toFixed(2) + " / " + reserved.toFixed(2) + " units (" + pct(frac) + ")</span></div>"
+        + '<div class="bar"><span class="' + barClass(frac) + '" style="width:' + width + '%"></span></div>'
+        + "</div>";
+    }
+
+    function renderReport(r) {
+      let html = "<h2>Total quota</h2>";
+      html += rowHTML("all entity types", r.total_used, r.total_quota, r.total_fraction);
+
+      html += "<h2>Per quota-rule</h2>";
+      if (!r.rules || r.rules.length === 0) {
+        html += '<p class="note">No enabled rules.</p>';
+      } else {
+        for (const rule of r.rules) {
+          html += rowHTML(rule.entity_type, rule.used, rule.reserved, rule.fraction);
+        }
+      }
+
+      html += "<h2>Unassigned (everything no rule covers)</h2>";
+      if (r.unassigned_quota <= 0) {
+        html += '<p class="note">Rules reserve the whole quota; no unassigned headroom ('
+          + r.unassigned_used.toFixed(2) + " units used outside any rule).</p>";
+      } else {
+        html += rowHTML("unassigned", r.unassigned_used, r.unassigned_quota, r.unassigned_fraction);
+      }
+
+      const blockedCls = r.blocked > 0 ? "blocked hit" : "blocked";
+      html += '<div class="' + blockedCls + '">Blocked today: ' + r.blocked.toFixed(2) + " units</div>";
+
+      reportEl.innerHTML = html;
+    }
+
+    goBtn.addEventListener("click", async () => {
+      reportEl.innerHTML = "";
+      const region = regionSel.value.trim();
+      const api_key = keyInput.value.trim();
+      if (!api_key) { setStatus("Enter an API key.", "err"); return; }
+      if (!keyLooksValid(api_key)) {
+        setStatus("API key must start with " + KEY_PREFIX + " and be exactly " + KEY_LEN + " characters.", "err");
+        updateKeyPreview();
+        return;
+      }
+      goBtn.disabled = true;
+      setStatus("Checking…");
+      try {
+        const res = await fetch("/api/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ region, api_key }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setStatus(body.error || res.statusText, "err");
+          return;
+        }
+        setStatus("Done.", "ok");
+        renderReport(body);
+      } catch (e) {
+        setStatus(String(e), "err");
+      } finally {
+        goBtn.disabled = false;
+      }
+    });
+
+    loadRegions().catch((e) => setStatus("Could not load regions: " + e, "err"));
+  </script>
+</body>
+</html>
