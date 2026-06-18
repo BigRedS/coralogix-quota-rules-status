@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -24,7 +25,16 @@ func NewClient(host, apiKey string) *Client {
 	return &Client{
 		host:   host,
 		apiKey: apiKey,
-		http:   &http.Client{Timeout: 30 * time.Second},
+		http: &http.Client{
+			Timeout: 30 * time.Second,
+			// Don't follow redirects. A bad API key makes the metrics API
+			// answer with a 302 to a login page; following it would land on
+			// some HTML and produce a confusing "invalid character" JSON error.
+			// Stopping here lets us report it as the auth failure it is.
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
 	}
 }
 
@@ -60,11 +70,31 @@ func (c *Client) do(method, urlStr string, body any, out any) error {
 		return fmt.Errorf("reading response from %s: %w", urlStr, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s returned %d: %s", urlStr, resp.StatusCode, string(data))
+		body := strings.TrimSpace(string(data))
+		// 401/403, and the 302-to-login the metrics API uses, all mean the key
+		// was rejected — say so plainly rather than dumping a status code.
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden,
+			http.StatusFound, http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+			msg := fmt.Sprintf("authentication failed (HTTP %d) — check the API key and its permissions", resp.StatusCode)
+			if body != "" {
+				msg += ": " + body
+			}
+			return fmt.Errorf("%s", msg)
+		default:
+			if body == "" {
+				body = "(no response body)"
+			}
+			return fmt.Errorf("%s returned HTTP %d: %s", urlStr, resp.StatusCode, body)
+		}
 	}
 
 	if err := json.Unmarshal(data, out); err != nil {
-		return fmt.Errorf("decoding response from %s: %w", urlStr, err)
+		snippet := strings.TrimSpace(string(data))
+		if len(snippet) > 200 {
+			snippet = snippet[:200] + "…"
+		}
+		return fmt.Errorf("unexpected non-JSON response from %s: %s", urlStr, snippet)
 	}
 	return nil
 }
