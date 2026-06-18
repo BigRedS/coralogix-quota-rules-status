@@ -107,6 +107,45 @@ func ComputeReport(totalQuota float64, rules []QuotaRule, usage map[string]float
 	return r
 }
 
+// MetricSeries is one row of the metrics we emit: a "rule" (a quota rule's
+// entity type, or the special "_total" / "_unassigned" buckets) and its figures
+// in units, plus the available headroom as a percentage.
+type MetricSeries struct {
+	Rule        string
+	UsageU      float64 // units used
+	LimitU      float64 // units reserved for this rule
+	AvailableU  float64 // LimitU - UsageU (negative if over budget)
+	AvailablePc float64 // 100 * AvailableU / LimitU (headroom remaining; 0 if no limit)
+}
+
+// MetricSeriesList flattens the report into the rows we emit as metrics: one
+// per quota rule, plus "_total" (the whole quota) and "_unassigned" (the
+// leftover). This holds the metric arithmetic in one testable place, away from
+// any OpenTelemetry code.
+func (r Report) MetricSeriesList() []MetricSeries {
+	rows := make([]MetricSeries, 0, len(r.Rules)+2)
+	add := func(rule string, used, limit float64) {
+		available := limit - used
+		pc := 0.0
+		if limit > 0 {
+			pc = 100 * available / limit
+		}
+		rows = append(rows, MetricSeries{
+			Rule:        rule,
+			UsageU:      used,
+			LimitU:      limit,
+			AvailableU:  available,
+			AvailablePc: pc,
+		})
+	}
+	for _, rule := range r.Rules {
+		add(rule.EntityType, rule.Used, rule.Reserved)
+	}
+	add("_total", r.TotalUsed, r.TotalQuota)
+	add("_unassigned", r.UnassignedUsed, r.UnassignedQuota)
+	return rows
+}
+
 // FetchReport runs the three API calls and computes the report. Both the CLI
 // and the web UI use this so they behave identically.
 func FetchReport(client *Client) (Report, error) {

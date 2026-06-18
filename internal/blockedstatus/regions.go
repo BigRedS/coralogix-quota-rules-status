@@ -14,6 +14,7 @@ var regionHosts = map[string]string{
 	"eu2": "api.eu2.coralogix.com",
 	"us1": "api.coralogix.us",
 	"us2": "api.cx498.coralogix.com",
+	"us3": "api.us3.coralogix.com",
 	"ap1": "api.coralogix.in",    // India
 	"ap2": "api.coralogixsg.com", // Singapore
 	"ap3": "api.ap3.coralogix.com",
@@ -27,6 +28,18 @@ func HostForRegion(region string) (string, error) {
 		return "", fmt.Errorf("unknown region %q (valid: eu1, eu2, us1, us2, ap1, ap2, ap3)", region)
 	}
 	return host, nil
+}
+
+// IngressEndpoint returns the OTLP gRPC ingress endpoint (host:port) for a
+// region — where telemetry is *sent*. It's the same region domain as the API
+// host but with an "ingress." prefix instead of "api.". This can be a different
+// region from the one we read usage from, so data can be pushed to another team.
+func IngressEndpoint(region string) (string, error) {
+	host, err := HostForRegion(region)
+	if err != nil {
+		return "", err
+	}
+	return "ingress." + strings.TrimPrefix(host, "api.") + ":443", nil
 }
 
 // RegionChoice is a region code and its API host, for the web UI dropdown.

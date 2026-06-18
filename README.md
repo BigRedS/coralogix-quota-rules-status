@@ -81,12 +81,20 @@ Blocked today: 0.00 units
 - When the rules reserve the whole quota (percentages summing to ~100%), there
   is no unassigned headroom, and the tool says so rather than dividing by zero.
 
+## Emitting metrics
+
+There is also an exporter that pushes these figures to Coralogix as OTLP metrics
+(per-rule, plus `_total` and `_unassigned`), runnable from cron or AWS Lambda —
+see [cmd/blocked-status-exporter/](cmd/blocked-status-exporter/).
+
 ## How it fits together
 
 | Path                        | Job                                                       |
 |-----------------------------|-----------------------------------------------------------|
 | `cmd/blocked-status/`       | the CLI: flags, orchestration, printing                   |
+| `cmd/blocked-status-exporter/` | pushes the report to Coralogix as OTLP metrics (cron/Lambda) |
 | `internal/blockedstatus/client.go` | the HTTP calls (PromQL metrics + quota rules) and types |
-| `internal/blockedstatus/calc.go`   | the proportion math (matches rules to usage by entity type) |
-| `internal/blockedstatus/regions.go`| region name → API host                            |
+| `internal/blockedstatus/calc.go`   | the proportion math + the metric series it emits   |
+| `internal/blockedstatus/regions.go`| region name → API host and ingress endpoint       |
+| `internal/metricemit/`      | the OTLP push (the only package that imports the OTel SDK) |
 | `webui/`                    | a small web UI that reuses `internal/blockedstatus`       |
