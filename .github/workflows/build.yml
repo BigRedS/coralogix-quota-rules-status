@@ -1,0 +1,81 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.goos }}/${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux,  goarch: amd64, arch: amd64 }
+          - { goos: linux,  goarch: arm64, arch: arm64 }            # 64-bit Raspberry Pi OS, ARM servers
+          - { goos: linux,  goarch: arm,   goarm: "7", arch: armv7 } # 32-bit Raspberry Pi OS
+          - { goos: darwin, goarch: amd64, arch: amd64 }            # Intel Macs
+          - { goos: darwin, goarch: arm64, arch: arm64 }            # Apple Silicon
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build binaries
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p pkg
+          go build -trimpath -ldflags "-s -w" -o pkg/quota-rules-status          ./cmd/quota-rules-status
+          go build -trimpath -ldflags "-s -w" -o pkg/quota-rules-status-exporter ./cmd/quota-rules-status-exporter
+          go build -trimpath -ldflags "-s -w" -o pkg/quota-rules-status-webui    ./webui
+
+      - name: Package
+        id: package
+        run: |
+          name="coralogix-quota-rules-status-${{ matrix.goos }}-${{ matrix.arch }}"
+          tar -czf "${name}.tar.gz" -C pkg .
+          echo "archive=${name}.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coralogix-quota-rules-status-${{ matrix.goos }}-${{ matrix.arch }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+
+  release:
+    name: Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: artifacts
+        run: sha256sum * > checksums.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
