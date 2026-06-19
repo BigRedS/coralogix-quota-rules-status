@@ -55,13 +55,15 @@
 </head>
 <body>
   <h1>quota-rules-status</h1>
-  <p class="note">How close is this team to its capacity blocks today? Runs the same checks as the CLI. Use only on a machine you trust; your API key is sent to this local server. The key needs the <code>team-quota-rules:Read</code> permission plus data-usage/metrics read access.</p>
+  <p class="note">How close is this team to its capacity blocks today? Runs the same checks as the CLI. Use only on a machine you trust; your API key is sent to this local server. The key needs the <code>team-quota-rules:Read</code>,<code>metrics.data-api#high:ReadData</code> and <code>data-usage:Read</code> permissions.</p>
+
+
 
   <label for="region">Environment (region)</label>
   <select id="region"></select>
 
   <label for="key">API key</label>
-  <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="cxup_… (35 characters)" />
+  <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="cxup_… or cxtp_… (35 characters)" />
   <div id="key-preview" aria-live="polite"></div>
 
   <button id="go" type="button">Check status</button>
@@ -72,9 +74,11 @@
   <footer>A small wrapper around the Coralogix HTTP API.</footer>
 
   <script>
-    /** Personal API keys: prefix cxup_ and fixed length (see Coralogix UI copy format). */
-    const KEY_PREFIX = "cxup_";
+    /** Coralogix API keys: personal (cxup_) or team (cxtp_), both 35 chars. */
+    const KEY_PREFIXES = ["cxup_", "cxtp_"];
+    const KEY_PREFIXES_TEXT = KEY_PREFIXES.join(" or ");
     const KEY_LEN = "cxup_06HddjzGTkHRCe1wLjFulhBbeJVdhB".length;
+    const matchedPrefix = (raw) => KEY_PREFIXES.find((p) => raw.startsWith(p)) || null;
 
     const regionSel = document.getElementById("region");
     const keyInput = document.getElementById("key");
@@ -104,16 +108,17 @@
       const raw = keyInput.value;
       keyInput.classList.remove("invalid");
       if (!raw) { keyPreview.textContent = ""; keyPreview.className = ""; return; }
-      if (!raw.startsWith(KEY_PREFIX)) {
-        keyPreview.textContent = "Visible check: key must start with " + KEY_PREFIX + ".";
+      const prefix = matchedPrefix(raw);
+      if (!prefix) {
+        keyPreview.textContent = "Visible check: key must start with " + KEY_PREFIXES_TEXT + ".";
         keyPreview.className = "warn";
         keyInput.classList.add("invalid");
         return;
       }
-      const rest = raw.slice(KEY_PREFIX.length);
+      const rest = raw.slice(prefix.length);
       const visible = rest.length <= 4
-        ? KEY_PREFIX + rest
-        : KEY_PREFIX + "•".repeat(rest.length - 4) + rest.slice(-4);
+        ? prefix + rest
+        : prefix + "•".repeat(rest.length - 4) + rest.slice(-4);
       keyPreview.textContent = "Visible check: " + visible + " — length " + raw.length + "/" + KEY_LEN;
       if (raw.length !== KEY_LEN) {
         keyPreview.className = "warn";
@@ -125,7 +130,7 @@
 
     function keyLooksValid(raw) {
       const s = raw.trim();
-      return s.startsWith(KEY_PREFIX) && s.length === KEY_LEN;
+      return matchedPrefix(s) !== null && s.length === KEY_LEN;
     }
 
     keyInput.addEventListener("input", updateKeyPreview);
@@ -181,7 +186,7 @@
       const api_key = keyInput.value.trim();
       if (!api_key) { setStatus("Enter an API key.", "err"); return; }
       if (!keyLooksValid(api_key)) {
-        setStatus("API key must start with " + KEY_PREFIX + " and be exactly " + KEY_LEN + " characters.", "err");
+        setStatus("API key must start with " + KEY_PREFIXES_TEXT + " and be exactly " + KEY_LEN + " characters.", "err");
         updateKeyPreview();
         return;
       }
@@ -207,7 +212,24 @@
       }
     });
 
-    loadRegions().catch((e) => setStatus("Could not load regions: " + e, "err"));
+    // Allow deep-linking: /?region=eu2&key=cxup_... prefills the form and, if a
+    // key is supplied, runs the check straight away. `api_key` is accepted as an
+    // alias for `key`. (Note: putting a key in a URL leaves it in browser history.)
+    function prefillFromURL() {
+      const params = new URLSearchParams(location.search);
+      const region = params.get("region");
+      const key = params.get("key") || params.get("api_key");
+      if (region) regionSel.value = region.toLowerCase();
+      if (key) {
+        keyInput.value = key;
+        updateKeyPreview();
+        goBtn.click(); // auto-run when a key is supplied
+      }
+    }
+
+    loadRegions()
+      .then(prefillFromURL)
+      .catch((e) => setStatus("Could not load regions: " + e, "err"));
   </script>
 </body>
 </html>

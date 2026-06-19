@@ -9,7 +9,7 @@
 # internal/quotarules package from the parent Go module.
 
 services:
-  cx-rules-status-webui:
+  cx-rules-status:
     build:
       context: ..
       dockerfile: webui/Dockerfile
