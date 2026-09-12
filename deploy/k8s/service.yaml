@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: coralogix-quota-rules-status
+  labels:
+    app: coralogix-quota-rules-status
+spec:
+  selector:
+    app: coralogix-quota-rules-status
+  ports:
+    - port: 8765
+      targetPort: 8765
