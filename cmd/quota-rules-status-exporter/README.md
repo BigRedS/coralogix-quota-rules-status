@@ -26,16 +26,16 @@ Alerting example: `quota_rules_available_pc{rule="logs"} < 10`.
 Reading usage and pushing metrics use **different credentials** and may target
 **different regions** (so the metrics can land in a different team).
 
-| Flag | Env | Meaning |
-|------|-----|---------|
-| `-region`         | `CX_REGION`           | region to **read** usage from |
-| `-api-key`        | `CX_API_KEY`          | management API key for reading (needs `team-quota-rules:Read` + usage/metrics read) |
-| `-emit-region`    | `CX_EMIT_REGION`      | region to **send** metrics to (defaults to `-region`) |
+| Flag                  | Env                     | Meaning |
+|-----------------------|-------------------------|---------|
+| `-region`             | `CX_REGION`             | region to **read** usage from |
+| `-api-key`            | `CX_API_KEY`            | management API key for reading (needs `team-quota-rules:Read` + usage/metrics read) |
+| `-emit-region`        | `CX_EMIT_REGION`        | region to **send** metrics to (defaults to `-region`) |
 | `-send-your-data-key` | `CX_SEND_YOUR_DATA_KEY` | Send-Your-Data key for emitting |
-| `-team`           | `CX_TEAM`             | value for the `team` label |
-| `-application`    | `CX_APPLICATION_NAME` | `cx.application.name` (default `quota-rules-status`) |
-| `-subsystem`      | `CX_SUBSYSTEM_NAME`   | `cx.subsystem.name` (default `quota-rules`) |
-| `-dry-run`        | —                     | print the metrics instead of pushing (no key needed) |
+| `-team`               | `CX_TEAM`               | value for the `team` label |
+| `-cx-application`     | `CX_APPLICATION_NAME`   | `cx.application.name` (default `quota-rules-status`) |
+| `-cx-subsystem`       | `CX_SUBSYSTEM_NAME`     | `cx.subsystem.name` (default `quota-rules`) |
+| `-dry-run`            | —                       | print the metrics instead of pushing (no ingest key needed) |
 
 ## Run one-shot (cron)
 
