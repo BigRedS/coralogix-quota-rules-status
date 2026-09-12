@@ -29,5 +29,8 @@ RUN go build -trimpath -ldflags "-s -w" -o /out/exporter ./cmd/quota-rules-statu
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/exporter /exporter
-USER nonroot:nonroot
+# Numeric UID:GID, not the "nonroot" name — Kubernetes' runAsNonRoot check
+# reads the image config's User field literally and can't verify a named
+# user is non-root, so it refuses to start the container otherwise.
+USER 65532:65532
 ENTRYPOINT ["/exporter"]
