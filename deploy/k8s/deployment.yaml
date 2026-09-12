@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coralogix-quota-rules-status
+  labels:
+    app: coralogix-quota-rules-status
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coralogix-quota-rules-status
+  template:
+    metadata:
+      labels:
+        app: coralogix-quota-rules-status
+    spec:
+      containers:
+        - name: webui
+          image: ghcr.io/bigreds/coralogix-quota-rules-status-webui:latest
+          args:
+            - -listen
+            - :8765
+          ports:
+            - containerPort: 8765
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8765
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8765
